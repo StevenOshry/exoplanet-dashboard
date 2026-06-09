@@ -47,7 +47,8 @@ def get_db_url():
     parser.add_argument("--dbname",   default=os.getenv("EXODB_NAME", ""))
     parser.add_argument("--user",     default=os.getenv("EXODB_USER", ""))
     parser.add_argument("--password", default=os.getenv("EXODB_PASS", None))
-    args = parser.parse_args()
+    #args = parser.parse_args()
+    args, unknown = parser.parse_known_args() 
 
     if not args.dbname:
         args.dbname = input("Database name: ")
