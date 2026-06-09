@@ -23,6 +23,7 @@ import os
 
 import pandas as pd
 from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
 import plotly.express as px
 import plotly.graph_objects as go
 import dash
@@ -34,35 +35,25 @@ from dash import dcc, html, Input, Output, callback
 # falls back to CLI args / interactive prompts for local development.
 # ---------------------------------------------------------------------------
 def get_db_url():
-    # On Render, DATABASE_URL is set automatically when you attach a Postgres DB
-    database_url = os.getenv("DATABASE_URL")
-    if database_url:
-        # Render provides postgres:// but SQLAlchemy needs postgresql://
-        return database_url.replace("postgres://", "postgresql+psycopg2://", 1)
+    # Looks for Render's variable first, then falls back to your local string
+    database_url = os.getenv("DATABASE_URL") or os.getenv("LOCAL_DATABASE_URL")
+    
+    if not database_url:
+        raise ValueError("No database connection string found in environment variables!")
+        
+    # Standardizes the prefix for SQLAlchemy
+    return database_url.replace("postgres://", "postgresql+psycopg2://", 1)
 
-    # Local development: use CLI args or env vars
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--host",     default=os.getenv("EXODB_HOST", "localhost"))
-    parser.add_argument("--port",     type=int, default=int(os.getenv("EXODB_PORT", 5432)))
-    parser.add_argument("--dbname",   default=os.getenv("EXODB_NAME", ""))
-    parser.add_argument("--user",     default=os.getenv("EXODB_USER", ""))
-    parser.add_argument("--password", default=os.getenv("EXODB_PASS", None))
-    #args = parser.parse_args()
-    args, unknown = parser.parse_known_args() 
+# Initialize engine
+engine = create_engine(
+    get_db_url(), 
+    poolclass=NullPool  # Leaves the pooling up to Neon's -pooler backend
+)
 
-    if not args.dbname:
-        args.dbname = input("Database name: ")
-    if not args.user:
-        args.user = input("Username: ")
-    if not args.password:
-        args.password = getpass.getpass(f"Password for {args.user}@{args.host}: ")
 
-    return (
-        f"postgresql+psycopg2://{args.user}:{args.password}"
-        f"@{args.host}:{args.port}/{args.dbname}"
-    )
 
-engine = create_engine(get_db_url(), pool_size=5, max_overflow=2)
+
+
 
 
 def query(sql: str, params=None) -> pd.DataFrame:
