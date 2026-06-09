@@ -557,6 +557,7 @@ body { background: #020817 !important; color: #cbd5e1; }
     border: 1px solid rgba(255,255,255,0.25) !important;
     border-radius: 4px !important;
 }
+.dash-dropdown-value-item { background-color: #1e293b !important; color: #e2e8f0 !important; }
 /* Slider tooltip content */
 [id*="slider-tooltip"][id*="content"],
 [id*="year-slider-tooltip"] {
