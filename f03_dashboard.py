@@ -76,6 +76,20 @@ def get_kpis():
     return query("SELECT * FROM exoplanet_summary").iloc[0]
 
 
+def get_kpis_filtered(methods, year_range):
+    """Return KPI counts filtered by discovery method and year range."""
+    where = _method_where(methods)
+    return query(f"""
+        SELECT
+            COUNT(*)                                            AS total_planets,
+            COUNT(DISTINCT hostname)                            AS total_stars,
+            COUNT(*) FILTER (WHERE sy_pnum > 1)                AS multi_planet_systems,
+            COUNT(*) FILTER (WHERE in_habitable_zone = TRUE)   AS in_habitable_zone
+        FROM clean_exoplanets
+        WHERE disc_year BETWEEN %s AND %s {where}
+    """, (year_range[0], year_range[1])).iloc[0]
+
+
 def get_timeline(methods):
     where = _method_where(methods)
     return query(f"""
@@ -175,11 +189,11 @@ def _method_where(methods):
 # ---------------------------------------------------------------------------
 # Layout helpers
 # ---------------------------------------------------------------------------
-def kpi_card(title, value, icon, color, subtitle=None):
+def kpi_card(title, value, icon, color, subtitle=None, kpi_id=None):
     return dbc.Col(dbc.Card([
         dbc.CardBody([
             html.Div(icon, className="kpi-icon", style={"fontSize": "2rem"}),
-            html.H2(f"{value:,}", className="kpi-value",
+            html.H2(f"{value:,}", id=kpi_id, className="kpi-value",
                     style={"color": color, "margin": "0.25rem 0", "fontWeight": 800}),
             html.P(title, className="kpi-label",
                    style={"margin": 0, "opacity": 0.7, "fontSize": "0.85rem"}),
@@ -663,11 +677,11 @@ def make_dashboard_content():
         # ── KPI cards ───────────────────────────────────────────────────
         dbc.Container([
             dbc.Row([
-                kpi_card("Total Planets",        kpis["total_planets"],       "🪐", "#38bdf8"),
-                kpi_card("Host Stars",           kpis["total_stars"],         "⭐", "#fbbf24"),
-                kpi_card("Multi-planet Systems", kpis["multi_planet_systems"],"🌍", "#34d399"),
+                kpi_card("Total Planets",        kpis["total_planets"],       "🪐", "#38bdf8", kpi_id="kpi-total-planets"),
+                kpi_card("Host Stars",           kpis["total_stars"],         "⭐", "#fbbf24", kpi_id="kpi-host-stars"),
+                kpi_card("Multi-planet Systems", kpis["multi_planet_systems"],"🌍", "#34d399", kpi_id="kpi-multi-planet"),
                 kpi_card("In Habitable Zone",    kpis["in_habitable_zone"],   "💧", "#f472b6",
-                         subtitle="Equilibrium temp 200–320 K · where liquid water may exist"),
+                         subtitle="Equilibrium temp 200–320 K · where liquid water may exist", kpi_id="kpi-habitable"),
             ], className="g-3"),
         ], fluid=True, style={"padding": "0 1rem 1.5rem"}),
 
@@ -798,6 +812,24 @@ def render_tab(active_tab):
 # ---------------------------------------------------------------------------
 # Callbacks
 # ---------------------------------------------------------------------------
+@callback(
+    Output("kpi-total-planets",  "children"),
+    Output("kpi-host-stars",     "children"),
+    Output("kpi-multi-planet",   "children"),
+    Output("kpi-habitable",      "children"),
+    Input("method-filter",       "value"),
+    Input("year-slider",         "value"),
+)
+def update_kpis(methods, year_range):
+    k = get_kpis_filtered(methods, year_range)
+    return (
+        f"{int(k['total_planets']):,}",
+        f"{int(k['total_stars']):,}",
+        f"{int(k['multi_planet_systems']):,}",
+        f"{int(k['in_habitable_zone']):,}",
+    )
+
+
 @callback(
     Output("timeline-chart", "figure"),
     Input("method-filter", "value"),
