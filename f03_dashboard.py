@@ -706,7 +706,7 @@ def make_dashboard_content():
             dbc.Row([
                 dbc.Col(dbc.Card(dbc.CardBody([
                     html.H5("Mass vs. Radius", className="chart-title"),
-                    html.P("Hover for details · Habitable-zone planets marked ✦ · sized by discovery method",
+                    html.P("Hover for details ",
                            style={"fontSize": "0.82rem", "color": "#cbd5e1", "margin": "-0.25rem 0 0.5rem"}),
                     dcc.Graph(id="scatter-chart", config={"displayModeBar": False},
                               style={"height": "380px"}),
@@ -873,13 +873,12 @@ def update_scatter(methods, year_range):
     df = get_scatter(methods, year_range)
 
     df = df.dropna(subset=["pl_rade", "pl_bmasse"])
-    df["symbol"] = df["in_habitable_zone"].map({True: "star", False: "circle"})
+    
     fig = px.scatter(
         df, x="pl_bmasse", y="pl_rade",
         color="discoverymethod",
         color_discrete_sequence=METHOD_COLORS,
-        symbol="in_habitable_zone",
-        symbol_map={True: "star", False: "circle"},
+        
         hover_name="pl_name",
         hover_data={"hostname": True, "pl_eqt": ":.0f", "disc_year": True,
                     "pl_bmasse": ":.2f", "pl_rade": ":.2f",
